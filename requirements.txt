@@ -1,0 +1,13 @@
+opencv-python
+plotly
+torch==1.12.1
+tqdm
+dm_control
+tensorboardX
+torchvision==0.13.1
+numpy==1.23.3
+# gym==0.18.0
+scikit-image
+tensorboard
+termcolor
+imageio==2.9.0
