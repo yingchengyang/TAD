@@ -177,6 +177,7 @@ print("writer is ready")
 
 # Initialise training environment and experience replay memory
 print("our envs are:", train_envs_name)
+task_parameters = []
 if args.env_type == 'dmc':
     train_envs = []
     for i in range(len(train_envs_name)):
@@ -214,11 +215,15 @@ elif args.env_type == 'mujoco':
         train_envs_name = ["cheetah-forward", "cheetah-backward"]
         test_tasks = []
         test_envs_name = []
+        task_parameters = [1.0, -1.0]
+        task_parameters = torch.tensor(task_parameters, dtype=torch.float).to(device=args.device)
     elif env_name == "ant-dir":
         train_tasks = all_tasks
         train_envs_name = ["ant-forward", "ant-backward"]
         test_tasks = []
         test_envs_name = []
+        task_parameters = [1.0, -1.0]
+        task_parameters = torch.tensor(task_parameters, dtype=torch.float).to(device=args.device)
     elif env_name == "cheetah-vel":
         train_tasks = all_tasks[:100]
         test_tasks = all_tasks[100:]
@@ -227,9 +232,11 @@ elif args.env_type == 'mujoco':
         for _ in range(100):
             train_envs_name[_] = train_envs_name[_] + \
                                  str(all_envs._env.tasks[train_tasks[_]]['velocity'])
+            task_parameters.append(all_envs._env.tasks[train_tasks[_]]['velocity'])
         for _ in range(30):
             test_envs_name[_] = test_envs_name[_] + \
                                 str(all_envs._env.tasks[test_tasks[_]]['velocity'])
+        task_parameters = torch.tensor(task_parameters, dtype=torch.float).to(device=args.device)
     elif env_name == "humanoid-dir":
         # obs dim 376, action dim 17
         train_tasks = all_tasks[:100]
@@ -239,9 +246,11 @@ elif args.env_type == 'mujoco':
         for _ in range(100):
             train_envs_name[_] = train_envs_name[_] + \
                                  str(all_envs._env.tasks[train_tasks[_]]['goal'])
+            task_parameters.append(all_envs._env.tasks[train_tasks[_]]['goal'])
         for _ in range(30):
             test_envs_name[_] = test_envs_name[_] + \
                                 str(all_envs._env.tasks[test_tasks[_]]['goal'])
+        task_parameters = torch.tensor(task_parameters, dtype=torch.float).to(device=args.device)
     elif env_name == "ant-goal":
         train_tasks = all_tasks[:100]
         test_tasks = all_tasks[100:]
@@ -357,6 +366,8 @@ transition_model = TransitionModel(args.belief_size, args.state_size,
                                    encoder_r=args.use_encode_r_transition).to(device=args.device)
 if args.context_dim == 0:
     args.context_dim = train_environment_number
+if args.task_loss_type == 'continuous_mse':
+    args.context_dim = 1
 task_model = TaskModel(args.belief_size, args.state_size, args.hidden_size,
                        args.dense_activation_function,
                        task_number=args.context_dim).to(device=args.device)
@@ -609,6 +620,13 @@ while episode < args.episodes:
                 # maximize log_softmax == minimize cross_entropy
                 task_loss += F.cross_entropy(task_hidden[chunk_index], task_index)
             task_loss = task_loss / task_hidden.shape[0]
+        elif args.task_loss_type == 'continuous_mse':
+            assert args.sep_replay_buffer
+            task_hidden = bottle(task_model, (beliefs, posterior_states))
+            task_index = task_parameters[task_index]
+            
+            task_loss = nn.MSELoss()(task_hidden[:, :, 0], task_index.view(1, task_index.shape[0]).expand_as(task_hidden[:, :, 0]))
+            task_loss = task_loss
         elif args.task_loss_type == 'supervised_contrastive':
             assert (args.tau > 0.0), \
                 'args.tau > 0.0'
