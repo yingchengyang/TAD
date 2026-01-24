@@ -2,7 +2,7 @@
 
 [![arXiv](https://img.shields.io/badge/arXiv-2303.05092-b31b1b.svg)](https://arxiv.org/abs/2303.05092)
 
-- This is the official implementation for [Task Aware Dreamer for Task Generalization in Reinforcement Learning]([https://www.ijcai.org/proceedings/2022/0510.pdf](https://arxiv.org/abs/2303.05092)).
+- This is the official implementation for [Task Aware Dreamer for Task Generalization in Reinforcement Learning](https://arxiv.org/abs/2303.05092) (Accepted in SCIENCE CHINA Information Sciences (SCIS), 2026).
 
 - The training code is based on [dreamer-pytorch](https://github.com/yusukeurakami/dreamer-pytorch).
 
